@@ -22,7 +22,7 @@ type Caffeinate struct {
 	UserActive bool
 	//-t: Specifies the timeout value in seconds
 	Timeout int
-	//-w: Specifies pid to wait for. If not set, will be the parent process pid.
+	//-w: Specifies pid to wait for.
 	PID int
 
 	cmd *exec.Cmd
@@ -69,4 +69,9 @@ func (c *Caffeinate) Stop() {
 	if err := c.cmd.Wait(); err != nil {
 		log.Fatal("error waiting for process after kill: ", err)
 	}
+}
+
+// Wait blocks until the caffeinate command exits
+func (c *Caffeinate) Wait() error {
+	return c.cmd.Wait()
 }
