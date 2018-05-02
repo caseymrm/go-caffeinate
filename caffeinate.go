@@ -89,6 +89,14 @@ func (c *Caffeinate) Running() bool {
 	return c.running
 }
 
+// CaffeinatePID returns the pid of caffeinate, if it's running
+func (c *Caffeinate) CaffeinatePID() int {
+	if !c.running {
+		return 0
+	}
+	return c.cmd.Process.Pid
+}
+
 func (c *Caffeinate) waitForProcess() {
 	c.waitChannel = make(chan bool)
 	c.waitError = c.cmd.Wait()
