@@ -29,6 +29,32 @@ func TestBasic(t *testing.T) {
 		}
 		return
 	}
+	if err := c.Wait(); err != nil {
+		t.Errorf("Waiting: %v", err)
+	}
+}
 
-	c.Wait()
+func TestPreempt(t *testing.T) {
+	c := Caffeinate{
+		System:  true,
+		Timeout: 2,
+	}
+	c.Run()
+	time.Sleep(time.Second)
+	if !c.Running() {
+		t.Errorf("Not running after one second")
+	}
+	c.Timeout = 3
+	c.Run()
+	time.Sleep(2 * time.Second)
+	if !c.Running() {
+		t.Errorf("Not running after two seconds")
+	}
+	time.Sleep(2 * time.Second)
+	if c.Running() {
+		t.Errorf("Still running after four seconds")
+	}
+	if err := c.Wait(); err != nil {
+		t.Errorf("Waiting: %v", err)
+	}
 }

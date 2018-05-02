@@ -25,11 +25,17 @@ type Caffeinate struct {
 	//-w: Specifies pid to wait for.
 	PID int
 
-	cmd *exec.Cmd
+	cmd         *exec.Cmd
+	running     bool
+	waitChannel chan bool
+	waitError   error
 }
 
 // Run the caffeinate command with these settings
 func (c *Caffeinate) Run() {
+	if c.running {
+		c.Stop()
+	}
 	args := make([]string, 0)
 	if c.Display {
 		args = append(args, "-d")
@@ -59,19 +65,36 @@ func (c *Caffeinate) Run() {
 	if err := c.cmd.Start(); err != nil {
 		log.Fatal("error starting process: ", err)
 	}
+	go c.waitForProcess()
+	c.running = true
 }
 
 // Stop this caffeinate process
-func (c *Caffeinate) Stop() {
+func (c *Caffeinate) Stop() error {
 	if err := c.cmd.Process.Kill(); err != nil {
-		log.Fatal("error killing process: ", err)
+		return err
 	}
-	if err := c.cmd.Wait(); err != nil {
-		log.Fatal("error waiting for process after kill: ", err)
-	}
+	return c.Wait()
 }
 
 // Wait blocks until the caffeinate command exits
 func (c *Caffeinate) Wait() error {
-	return c.cmd.Wait()
+	if !c.running {
+		return nil
+	}
+	<-c.waitChannel
+	return c.waitError
+}
+
+// Running returns whether caffeinate is currently running
+func (c *Caffeinate) Running() bool {
+	return c.running
+}
+
+func (c *Caffeinate) waitForProcess() {
+	c.waitChannel = make(chan bool)
+	c.waitError = c.cmd.Wait()
+	c.running = false
+	close(c.waitChannel)
+	c.waitChannel = nil
 }
