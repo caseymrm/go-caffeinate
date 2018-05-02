@@ -30,8 +30,8 @@ type Caffeinate struct {
 	waitError   error
 }
 
-// Run the caffeinate command with these settings
-func (c *Caffeinate) Run() {
+// Start the caffeinate command with these settings
+func (c *Caffeinate) Start() {
 	if c.running {
 		c.Stop()
 	}
