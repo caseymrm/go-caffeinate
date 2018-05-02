@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
-	"strings"
 )
 
 // Caffeinate represents an invokation of the osx 'caffeinate' command
@@ -60,7 +59,6 @@ func (c *Caffeinate) Run() {
 	} else {
 		args = append(args, "-w", strconv.Itoa(os.Getpid()))
 	}
-	log.Printf("Command: %s %s", "/usr/bin/caffeinate", strings.Join(args, " "))
 	c.cmd = exec.Command("/usr/bin/caffeinate", args...)
 	if err := c.cmd.Start(); err != nil {
 		log.Fatal("error starting process: ", err)
