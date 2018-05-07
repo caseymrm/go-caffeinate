@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"sync"
 )
 
 // Caffeinate represents an invokation of the osx 'caffeinate' command
@@ -24,6 +25,7 @@ type Caffeinate struct {
 	//-w: Specifies pid to wait for.
 	PID int
 
+	mutex       sync.Mutex
 	cmd         *exec.Cmd
 	running     bool
 	waitChannel chan bool
@@ -32,8 +34,14 @@ type Caffeinate struct {
 
 // Start the caffeinate command with these settings
 func (c *Caffeinate) Start() {
-	if c.running {
+	c.mutex.Lock()
+	if c.waitChannel == nil {
+		c.waitChannel = make(chan bool)
+	}
+	for c.running {
+		c.mutex.Unlock()
 		c.Stop()
+		c.mutex.Lock()
 	}
 	args := make([]string, 0)
 	if c.Display {
@@ -65,22 +73,34 @@ func (c *Caffeinate) Start() {
 	}
 	go c.waitForProcess()
 	c.running = true
+	c.mutex.Unlock()
 }
 
 // Stop this caffeinate process
 func (c *Caffeinate) Stop() error {
+	c.mutex.Lock()
+	if !c.running {
+		c.mutex.Unlock()
+		return nil
+	}
 	if err := c.cmd.Process.Kill(); err != nil {
+		c.mutex.Unlock()
 		return err
 	}
+	c.mutex.Unlock()
 	return c.Wait()
 }
 
 // Wait blocks until the caffeinate command exits
 func (c *Caffeinate) Wait() error {
+	c.mutex.Lock()
 	if !c.running {
+		c.mutex.Unlock()
 		return nil
 	}
-	<-c.waitChannel
+	channel := c.waitChannel
+	c.mutex.Unlock()
+	<-channel
 	return c.waitError
 }
 
@@ -98,9 +118,11 @@ func (c *Caffeinate) CaffeinatePID() int {
 }
 
 func (c *Caffeinate) waitForProcess() {
-	c.waitChannel = make(chan bool)
 	c.waitError = c.cmd.Wait()
+	c.mutex.Lock()
 	c.running = false
-	close(c.waitChannel)
-	c.waitChannel = nil
+	oldWaitChannel := c.waitChannel
+	c.waitChannel = make(chan bool)
+	c.mutex.Unlock()
+	close(oldWaitChannel)
 }
